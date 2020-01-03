@@ -1,0 +1,44 @@
+.DS_Store
+.vscode
+node_modules
+/dist
+/static
+/templates
+
+# Front-end app folders
+/simple-auth/dist
+/simple-auth/node_modules
+
+# Project env Back-end folder
+/env/_pycache_
+/env/Include
+/env/Lib
+/env/Scripts
+/env/flask_app - Library.py
+/env/RestClientCert.pfx
+/env/server.cer
+/env/test_cert.py
+
+# local env files
+.env
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+.pk
+.pem
+.pub
+.pfx
+*.cer
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
