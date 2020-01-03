@@ -1,22 +1,28 @@
-<h1>Gallagher Mobile Credential – Self Service application<h1>
+# Gallagher Mobile Credential – Self Service application
 
-This application consists of a:
+This application consists of:
 
-* Vue.js Front-end – where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
+## Vue.js Front-end
 
-* Flask Back-end – this processes the user front-end requests and checks the users access group and whether they are an authorized user
+where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
 
-* Gallagher Access Control system - REST API – cardholder licensable feature – updates authorized cardholder Personal Data Fields so they can be sent a mobile credential
+## Flask Back-end
 
-<h2>Getting Started<h2>
+this processes the user front-end requests and checks the users access group and whether they are an authorized user
 
-<h3>Install and setup Gallagher<h3>
+## Gallagher Access Control system
+
+REST API – cardholder licensable feature – updates authorized cardholder Personal Data Fields so they can be sent a mobile credential
+
+# Getting Started
+
+## Install and setup Gallagher
   
 * create a REST client (= API key), enable REST port 8094, create cert thumbprint, set client cert (pin it)
 
 * create Access Group(s), PDFs, Users
 
-<h3>Install and setup Vue.js<h3>
+## Install and setup Vue.js
 Create simple-auth Project – axios to send front-end requests to Flask app
   
 * Navigate into PyGallRest\simple-auth Project folder
@@ -27,7 +33,7 @@ Create simple-auth Project – axios to send front-end requests to Flask app
 
 The vue app currently will run on localhost:8090
 
-<h3>Install and setup Flask<h3>
+## Install and setup Flask
   
 * Navigate into PyGallRest\env Project folder
   
