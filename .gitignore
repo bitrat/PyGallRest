@@ -12,6 +12,7 @@ PyGallRest.code-workspace
 
 # Project env Back-end folder
 /env/_pycache_
+flask.cpython-38.pyc
 /env/Include
 /env/Lib
 /env/Scripts
