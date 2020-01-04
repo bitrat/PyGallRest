@@ -128,7 +128,8 @@ def send_reset_msg(key,mail_rcp):
         mail.send(msg)
 
 def set_reset_expiry(from_date):
-    until_reset = from_date.add(hours=24)
+    # NZDST +13 hours (if before 1 pm, then with add 24 hours, ResetDate is programmed as today 00:00, not time and date
+    until_reset = from_date.add(hours=26)
     print(until_reset)
     # To enable datetime to be serialized
     untilReset = until_reset.isoformat()
@@ -198,102 +199,105 @@ def post_LoginData():
         print('----- START LOGIN Script ---------------------------')
         # INPUT from Cardholder - FORM
         WNemail = request.json.get('email')
-        WNVerify = request.json.get('password')
+        WNVerify = request.json.get('password')  
 
-        ag_list = get_accessgroups()
-        data_ag_list = ag_list.json()
-        print('                                              ')
-        print('----------------------------------------------')
-        for each in data_ag_list['results']:   
-            #print(each['name'])
-            if (each['name'] == "RequestAccess"):
-                AG_id = each['id']
-                # get cardholders from the specific Access group
-                AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
-                AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
-                #print('----------------------------------------------')
-                #print(AG_cardholders.json())
-                data_AG_cardholders = AG_cardholders.json()
-                # Foreach cardholder in the Access group get their details URL
-                #print('----------------------------------------------')
-                for cardholder in data_AG_cardholders['cardholders']:
-                    #print('---------------HREF---------------------------')
-                    CH_href = cardholder['cardholder']['href']
-                    print(CH_href)
+        if (WNemail and WNVerify):
+            ag_list = get_accessgroups()
+            data_ag_list = ag_list.json()
+            print('                                              ')
+            print('----------------------------------------------')
+            for each in data_ag_list['results']:   
+                #print(each['name'])
+                if (each['name'] == "RequestAccess"):
+                    AG_id = each['id']
+                    # get cardholders from the specific Access group
+                    AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
+                    AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
                     #print('----------------------------------------------')
-                    cardholder_details = get_cardholder_details(CH_href)
-                    data_cardholder_details = cardholder_details.json()
-                    #print(data_cardholder_details)
-                    #print(json.dumps(data_cardholder_details, indent=4))
-                    extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
-                    #print(extract_data_cardholder_details)
-                    #print('----------------------------------------------')                    
-                    # compare Email to the one entered
-                    # make sure the cardholder access group membership is still active
-                    data_CH_detail = json.loads(extract_data_cardholder_details)
-                    if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
-                        print('----------------------------------------------')
-                        print(data_CH_detail['@Email'])
-                        # TO DO: change 'Phone' to 'Mobile' or 'Cellphone'
-                        print(data_CH_detail['@Phone'])
+                    #print(AG_cardholders.json())
+                    data_AG_cardholders = AG_cardholders.json()
+                    # Foreach cardholder in the Access group get their details URL
+                    #print('----------------------------------------------')
+                    for cardholder in data_AG_cardholders['cardholders']:
+                        #print('---------------HREF---------------------------')
+                        CH_href = cardholder['cardholder']['href']
+                        print(CH_href)
+                        #print('----------------------------------------------')
+                        cardholder_details = get_cardholder_details(CH_href)
+                        data_cardholder_details = cardholder_details.json()
+                        #print(data_cardholder_details)
+                        #print(json.dumps(data_cardholder_details, indent=4))
+                        extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
+                        #print(extract_data_cardholder_details)
+                        #print('----------------------------------------------')                    
+                        # compare Email to the one entered
+                        # make sure the cardholder access group membership is still active
+                        data_CH_detail = json.loads(extract_data_cardholder_details)
+                        if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
+                            print('----------------------------------------------')
+                            print(data_CH_detail['@Email'])
+                            # TO DO: change 'Phone' to 'Mobile' or 'Cellphone'
+                            print(data_CH_detail['@Phone'])
 
-                        # Test if VerifyPassword PDF exists
-                        if ('@VerifyPassword' in data_CH_detail):
-                            print('----------------------------------------------') 
-                            # Verify password entered by user with hashed bcrypt value 
-                            if (verify_password(WNVerify,data_CH_detail['@VerifyPassword'])):
-                                # password verified
-                                print('-------- GET "Mobile Credential" CARD TYPE DETAILS -----------')
-                                get_mc = get_cardtype("Mobile Credential")
-                                data_mc = get_mc.json()
-                                #print(data_mc)
-                                #print('----------------------------------------------')
-                                for each_mc in data_mc['results']:   
-                                    #print(each_mc['name'])
-                                    #print(each_mc['id'])
-                                    credential_href = each_mc['href']
-                                    print(credential_href)
-                                    if (each_mc['credentialClass'] == 'mobile'):
-                                        #print(each_mc['credentialClass'])
-                                        # TO DO: Define Timezone of destination
-                                        from_date = pendulum.now()
-                                        print(from_date)
-                                        # To enable datetime to be serialized
-                                        fromDate = from_date.isoformat()
-                                        untilDate = set_mobile_expiry(from_date)
-                                        text_credential_assign = json.dumps({"href": CH_href,"cards": {"add": [{"type": {"href": credential_href},"status": {"value": "Active"},"invitation": {"email": data_CH_detail['@Email'],"mobile": data_CH_detail['@Phone']},"from": fromDate,"until": untilDate,"credentialClass": "mobile"}]}})                                
-                                        # convert JSON string to python object
-                                        json_credential_assign = json.loads(text_credential_assign)
-                                        patch_mc_date = update_cardholder_pdf(CH_href, json_credential_assign)
-                                        if patch_mc_date.status_code == 204:
-                                            user_count+=1
-                                            print('----------------------------------------------') 
-                                            print(" Mobile Credential successfully assigned to "+data_CH_detail['@Email'])
-                                            print('----------------------------------------------') 
-                                            success_msg = "LOGIN SUCCESSFUL - Mobile Credential successfully assigned to "+data_CH_detail['@Email']
-                                            #success_msg = data_CH_detail['@Email']
-                                            success_code = 200
-                                            return(success_msg, success_code)
+                            # Test if VerifyPassword PDF exists
+                            if ('@VerifyPassword' in data_CH_detail):
+                                print('----------------------------------------------') 
+                                # Verify password entered by user with hashed bcrypt value 
+                                if (verify_password(WNVerify,data_CH_detail['@VerifyPassword'])):
+                                    # password verified
+                                    print('-------- GET "Mobile Credential" CARD TYPE DETAILS -----------')
+                                    get_mc = get_cardtype("Mobile Credential")
+                                    data_mc = get_mc.json()
+                                    #print(data_mc)
+                                    #print('----------------------------------------------')
+                                    for each_mc in data_mc['results']:   
+                                        #print(each_mc['name'])
+                                        #print(each_mc['id'])
+                                        credential_href = each_mc['href']
+                                        print(credential_href)
+                                        if (each_mc['credentialClass'] == 'mobile'):
+                                            #print(each_mc['credentialClass'])
+                                            # TO DO: Define Timezone of destination
+                                            from_date = pendulum.now()
+                                            print(from_date)
+                                            # To enable datetime to be serialized
+                                            fromDate = from_date.isoformat()
+                                            untilDate = set_mobile_expiry(from_date)
+                                            text_credential_assign = json.dumps({"href": CH_href,"cards": {"add": [{"type": {"href": credential_href},"status": {"value": "Active"},"invitation": {"email": data_CH_detail['@Email'],"mobile": data_CH_detail['@Phone']},"from": fromDate,"until": untilDate,"credentialClass": "mobile"}]}})                                
+                                            # convert JSON string to python object
+                                            json_credential_assign = json.loads(text_credential_assign)
+                                            patch_mc_date = update_cardholder_pdf(CH_href, json_credential_assign)
+                                            if patch_mc_date.status_code == 204:
+                                                user_count+=1
+                                                print('----------------------------------------------') 
+                                                print(" Mobile Credential successfully assigned to "+data_CH_detail['@Email'])
+                                                print('----------------------------------------------') 
+                                                success_msg = "LOGIN SUCCESSFUL - Mobile Credential successfully assigned to "+data_CH_detail['@Email']
+                                                #success_msg = data_CH_detail['@Email']
+                                                success_code = 200
+                                                return(success_msg, success_code)
+                                else:
+                                    user_count=0
+                                    error_notify = error_status("Password could not be verified - Please try again")
+                                    print(error_notify)
                             else:
                                 user_count=0
-                                error_notify = error_status("Password could not be verified - Please try again")
+                                error_notify = error_status("User is Not Registered yet - Register to set Password")
                                 print(error_notify)
                         else:
                             user_count=0
-                            error_notify = error_status("User is Not Registered yet - Register to set Password")
+                            error_notify = error_status("Cardholder not valid")
                             print(error_notify)
-                    else:
-                        user_count=0
-                        error_notify = error_status("Cardholder not valid")
-                        print(error_notify)
-                
-        if (user_count == 0):  #This can now safely be 0 as you only increment if there is a file
-            # A simple - return("User not Verified") - returns status code 200
-            #abort(400, "User not verified")
+        else:
+            user_count=0
+            error_notify = error_status("Email and/pr password is Empty")
+            print(error_notify)
+        
+        if (user_count == 0):  
             msg = "LOGIN FAILED - User not Verified - Email and/or Password is wrong OR Have you not registered yet ?"
             code = 400       
             return msg, code
-
+        
         print('----- END LOGIN Script ---------------------------')
  
 @app.route('/postRegister', methods=['GET','POST'])
@@ -320,142 +324,169 @@ def post_RegisterData():
         WNComparePassword = request.json.get('verifyPassword')
         #print(WNComparePassword)
 
-        if (WNVerify == WNComparePassword):
-            # Check the specified Access Group
-            ag_list = get_accessgroups()
-            #print(ag_list.json())
-            data_ag_list = ag_list.json()
+        if (WNemail and WNVerify and WNComparePassword):
+            if (WNVerify == WNComparePassword):
+                # Check the specified Access Group
+                ag_list = get_accessgroups()
+                #print(ag_list.json())
+                data_ag_list = ag_list.json()
 
-            for each in data_ag_list['results']:   
-                #print(each['name'])
-                if (each['name'] == "RequestAccess"):
-                    AG_id = each['id']
-                    #print(AG_id)
-                    # get cardholders from the specific Access group
-                    AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
-                    #print(AG_cardholders_URL)
-                    AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
-                    #print('----------------------------------------------')
-                    #print(AG_cardholders.json())
-                    data_AG_cardholders = AG_cardholders.json()
-                    # Foreach cardholder in the Access group get their details URL
-                    #print('----------------------------------------------')
-                    for cardholder in data_AG_cardholders['cardholders']:
-                        CH_href = cardholder['cardholder']['href']
-                        print(CH_href)
+                for each in data_ag_list['results']:   
+                    #print(each['name'])
+                    if (each['name'] == "RequestAccess"):
+                        AG_id = each['id']
+                        #print(AG_id)
+                        # get cardholders from the specific Access group
+                        AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
+                        #print(AG_cardholders_URL)
+                        AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
                         #print('----------------------------------------------')
-                        cardholder_details = get_cardholder_details(CH_href)
-                        data_cardholder_details = cardholder_details.json()
-                        #print(data_cardholder_details)
-                        #print(json.dumps(data_cardholder_details, indent=4))
-                        extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
-                        #print(extract_data_cardholder_details)
-                        data_CH_detail = json.loads(extract_data_cardholder_details)
-                        if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
-                            print('----------------------------------------------')
-                            print(data_CH_detail['@Email'])
-                            print(data_CH_detail['@Phone'])
-                            # Test if VerifyPassword PDF exists
-                            if ('@VerifyPassword' in data_CH_detail):
+                        #print(AG_cardholders.json())
+                        data_AG_cardholders = AG_cardholders.json()
+                        # Foreach cardholder in the Access group get their details URL
+                        #print('----------------------------------------------')
+                        for cardholder in data_AG_cardholders['cardholders']:
+                            CH_href = cardholder['cardholder']['href']
+                            print(CH_href)
+                            #print('----------------------------------------------')
+                            cardholder_details = get_cardholder_details(CH_href)
+                            data_cardholder_details = cardholder_details.json()
+                            #print(data_cardholder_details)
+                            #print(json.dumps(data_cardholder_details, indent=4))
+                            extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
+                            #print(extract_data_cardholder_details)
+                            data_CH_detail = json.loads(extract_data_cardholder_details)
+                            if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
+                                print('----------------------------------------------')
+                                print(data_CH_detail['@Email'])
+                                print(data_CH_detail['@Phone'])
+                                # Test if VerifyPassword PDF exists
+                                if ('@VerifyPassword' in data_CH_detail):
+                                    user_count=0
+                                    error_notify = error_status("User is already registered")
+                                    print(error_notify)
+                                else:                             
+                                    # Password does not already exists in VerifyPassword PDF
+                                    hash_text = create_password(WNVerify)
+                                    data_update = {'personalDataDefinitions': [{'@VerifyPassword': {'value': hash_text}}]} 
+                                    hash_json_patch_password = convert_password(data_update)
+                    
+                                    success_pass_write = update_cardholder_pdf(CH_href, hash_json_patch_password)
+                                    if success_pass_write.status_code == 204:
+                                        user_count+=1
+                                        msg = "REGISTRATION was SUCCESSFUL - Please LOGIN with the email and password you just entered, to receive your mobile credential."
+                                        code = 200       
+                                        return msg, code
+                                        print("SUCCESS: Password written to VerifyPassword PDF")                               
+                                print('----------------------------------------------')
+                            else:
                                 user_count=0
-                                error_notify = error_status("User is already registered")
+                                error_notify = error_status("Cardholder not valid")
                                 print(error_notify)
-                            else:                             
-                                # Password does not already exists in VerifyPassword PDF
-                                hash_text = create_password(WNVerify)
-                                data_update = {'personalDataDefinitions': [{'@VerifyPassword': {'value': hash_text}}]} 
-                                hash_json_patch_password = convert_password(data_update)
-                
-                                success_pass_write = update_cardholder_pdf(CH_href, hash_json_patch_password)
-                                if success_pass_write.status_code == 204:
-                                    user_count+=1
-                                    msg = "REGISTRATION was SUCCESSFUL - Please LOGIN with the email and password you just entered, to receive your mobile credential."
-                                    code = 200       
-                                    return msg, code
-                                    print("SUCCESS: Password written to VerifyPassword PDF")                               
-                            print('----------------------------------------------')
-                        else:
-                            user_count=0
-                            error_notify = error_status("Cardholder not valid")
-                            print(error_notify)
+            else:
+                user_count=0
+                error_notify = error_status("Passwords didn't match")
+                print(error_notify)
+                    
         else:
             user_count=0
-            error_notify = error_status("Passwords didn't match")
+            error_notify = error_status("Email and/pr password is Empty")
             print(error_notify)
-                  
+
         if (user_count == 0):  
             msg = "REGISTRATION FAILED - Registered in the Past Already ? - OR - You are Not Authorized to Register"
             code = 400       
-            return msg, code
-
+            return msg, code    
         print('----- END Register Script ---------------------------')
- 
+
 @app.route('/rqForgotPassword', methods=['POST'])
 @cross_origin(origin='*')
 def post_rqForgotPassword(): 
     if request.method == "POST":  
         # Get user's email address and check if a reset password is allowed
         user_count = 0
-        print('----- START Script ---------------------------')
+        print('----- START FORGOT PASSWORD Script ---------------------------')
         # Cardholder Input - FORM
         WNemail = request.json.get('email')
 
-        # Check the specified Access Group
-        ag_list = get_accessgroups()
-        print(ag_list.json())
-        data_ag_list = ag_list.json()
-        print('                                              ')
-        print('----------------------------------------------')
-        for each in data_ag_list['results']:   
-            if (each['name'] == "RequestAccess"):
-                AG_id = each['id']
-                # get cardholders from the specific Access group
-                AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
-                AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
-                data_AG_cardholders = AG_cardholders.json()
-                # Foreach cardholder in the Access group get their details URL
-                for cardholder in data_AG_cardholders['cardholders']:
-                    CH_href = cardholder['cardholder']['href']
-                    #print(CH_href)
-                    cardholder_details = get_cardholder_details(CH_href)
-                    data_cardholder_details = cardholder_details.json()
-                    extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
-                    # compare Email to the one entered
-                    # make sure the cardholder access group membership is still active
-                    data_CH_detail = json.loads(extract_data_cardholder_details)
-                    if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
-                        print('----------------------------------------------')
-                        print(data_CH_detail['@Email'])
-                        # TO DO: change 'Phone' to 'Mobile' or 'Cellphone'
-                        print(data_CH_detail['@Phone'])
-                        # resetCode date comparison
-                        from_reset = pendulum.now()
-                        # To enable datetime to be serialized
-                        fromReset = from_reset.isoformat()
-                        #print(data_CH_detail)
-    
-                        # If ResetCode PDF is set and is not expired
-                        if ('@ResetCode' in data_CH_detail):
-                            if ('@ResetExpiry' in data_CH_detail):
-                                # Is ResetCode Expired ? No
-                                if (data_CH_detail['@ResetExpiry'] > str(from_reset)):
-                                    user_count+=1
-                                    # TO DO: TEST - Sending currently active Reset URL to user
-                                    key_id = data_CH_detail['@ResetCode']
-                                    rcp = data_CH_detail['@Email']
-                                    try:
-                                        #send_reset_msg(key_id,rcp)
-                                        print('----------------------------------------------')
-                                        print("SUCCESS: Reset Code sent to User")
-                                        print('----------------------------------------------')
-                                        success_msg = "PASSWORD RESET Code sent - Check your email and follow the Password Reset Link we sent you."
-                                        success_code = 200
-                                        return(success_msg, success_code)        
-                                    except:
-                                        user_count=0
-                                        error_notify = error_status("Reset Email could not be sent")
-                                        print(error_notify)
-                                # Is ResetCode Expired ? Yes
+        if (WNemail):
+            # Check the specified Access Group
+            ag_list = get_accessgroups()
+            print(ag_list.json())
+            data_ag_list = ag_list.json()
+            print('                                              ')
+            print('----------------------------------------------')
+            for each in data_ag_list['results']:   
+                if (each['name'] == "RequestAccess"):
+                    AG_id = each['id']
+                    # get cardholders from the specific Access group
+                    AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
+                    AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
+                    data_AG_cardholders = AG_cardholders.json()
+                    # Foreach cardholder in the Access group get their details URL
+                    for cardholder in data_AG_cardholders['cardholders']:
+                        CH_href = cardholder['cardholder']['href']
+                        #print(CH_href)
+                        cardholder_details = get_cardholder_details(CH_href)
+                        data_cardholder_details = cardholder_details.json()
+                        extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
+                        # compare Email to the one entered
+                        # make sure the cardholder access group membership is still active
+                        data_CH_detail = json.loads(extract_data_cardholder_details)
+                        if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
+                            print('----------------------------------------------')
+                            print(data_CH_detail['@Email'])
+                            # TO DO: change 'Phone' to 'Mobile' or 'Cellphone'
+                            print(data_CH_detail['@Phone'])
+                            # resetCode date comparison
+                            from_reset = pendulum.now()
+                            # To enable datetime to be serialized
+                            fromReset = from_reset.isoformat()
+                            #print("From Date: ",fromReset)
+                            #print(data_CH_detail)
+        
+                            # If ResetCode PDF is set and is not expired
+                            if ('@ResetCode' in data_CH_detail):
+                                if ('@ResetExpiry' in data_CH_detail):
+                                    # Is ResetCode Expired ? No
+                                    if (data_CH_detail['@ResetExpiry'] > str(fromReset)):
+                                        user_count+=1
+                                        # TO DO: TEST - Sending currently active Reset URL to user
+                                        key_id = data_CH_detail['@ResetCode']
+                                        rcp = data_CH_detail['@Email']
+                                        try:
+                                            #send_reset_msg(key_id,rcp)
+                                            print('----------------------------------------------')
+                                            print("SUCCESS: Reset Code sent to User")
+                                            print('----------------------------------------------')
+                                            success_msg = "PASSWORD RESET Code sent - Check your email and follow the Password Reset Link we sent you."
+                                            success_code = 200
+                                            return(success_msg, success_code)        
+                                        except:
+                                            user_count=0
+                                            error_notify = error_status("Reset Email could not be sent")
+                                            print(error_notify)
+                                    # Is ResetCode Expired ? Yes
+                                    else:
+                                        untilResetDate = set_reset_expiry(from_reset)
+                                        # Create new ResetCode
+                                        reset_key = create_resetpsw_key()
+                                        # Write new Expiry and ResetCode into cardholder PDF
+                                        text_resetcode_assign = json.dumps({"@ResetCode": reset_key,"@ResetExpiry": untilResetDate})
+                                        json_resetcode_assign = json.loads(text_resetcode_assign)
+                                        patch_mc_date = update_cardholder_pdf(CH_href, json_resetcode_assign)
+                                        if patch_mc_date.status_code == 204:
+                                            user_count+=1
+                                            # TO DO: Send "Reset URL" to user
+                                            print('----------------------------------------------') 
+                                            print(" Reset Code set and sent to "+data_CH_detail['@Email'])
+                                            print('----------------------------------------------') 
+                                            
+                                            success_msg = "PASSWORD RESET successful - Check your email and follow the Password Reset Link we sent you."
+                                            #success_msg = data_CH_detail['@Email']
+                                            success_code = 200
+                                            return(success_msg, success_code)                               
+                                # If Reset Expiry is empty - put in an Expiry date and send a new Reset code
                                 else:
                                     untilResetDate = set_reset_expiry(from_reset)
                                     # Create new ResetCode
@@ -474,46 +505,49 @@ def post_rqForgotPassword():
                                         success_msg = "PASSWORD RESET successful - Check your email and follow the Password Reset Link we sent you."
                                         #success_msg = data_CH_detail['@Email']
                                         success_code = 200
-                                        return(success_msg, success_code)                               
-                                print('----------------------------------------------')
+                                        return(success_msg, success_code)                                                           
+                            else:                             
+                                # Reset Code does not already exist in ResetCode PDF 
+                                untilResetDate = set_reset_expiry(from_reset)
+                                # Create ResetCode
+                                reset_key = create_resetpsw_key()
+                                # Write Expiry and ResetCode into cardholder PDF
+                                text_resetcode_assign = json.dumps({"@ResetCode": reset_key,"@ResetExpiry": untilResetDate})
+                                json_resetcode_assign = json.loads(text_resetcode_assign)
+                                patch_mc_date = update_cardholder_pdf(CH_href, json_resetcode_assign)
+                                if patch_mc_date.status_code == 204:
+                                    user_count+=1
+                                    # TO DO: TEST - Sending "Reset URL" to user
+                                    key_id = reset_key
+                                    rcp = data_CH_detail['@Email']
+                                    try:
+                                        #send_reset_msg(key_id,rcp)
+                                        print('----------------------------------------------') 
+                                        print(" Reset Expiry Date set and Reset Code sent to "+data_CH_detail['@Email'])
+                                        print('----------------------------------------------') 
+                                        success_msg = "PASSWORD RESET successful - Check your email and follow the Password Reset Link we sent you."
+                                        success_code = 200
+                                        return(success_msg, success_code)        
+                                    except:
+                                        user_count=0
+                                        error_notify = error_status("Reset Email could not be sent")
+                                        print(error_notify)                              
+                        else:
+                            user_count=0
+                            error_notify = error_status("Cardholder not valid")
+                            print(error_notify)
 
-                        else:                             
-                            # Reset Code does not already exist in ResetCode PDF 
-                            untilResetDate = set_reset_expiry(from_reset)
-                            # Create ResetCode
-                            reset_key = create_resetpsw_key()
-                            # Write Expiry and ResetCode into cardholder PDF
-                            text_resetcode_assign = json.dumps({"@ResetCode": reset_key,"@ResetExpiry": untilResetDate})
-                            json_resetcode_assign = json.loads(text_resetcode_assign)
-                            patch_mc_date = update_cardholder_pdf(CH_href, json_resetcode_assign)
-                            if patch_mc_date.status_code == 204:
-                                user_count+=1
-                                # TO DO: TEST - Sending "Reset URL" to user
-                                key_id = reset_key
-                                rcp = data_CH_detail['@Email']
-                                try:
-                                    #send_reset_msg(key_id,rcp)
-                                    print('----------------------------------------------') 
-                                    print(" Reset Code set and sent to "+data_CH_detail['@Email'])
-                                    print('----------------------------------------------') 
-                                    success_msg = "PASSWORD RESET successful - Check your email and follow the Password Reset Link we sent you."
-                                    success_code = 200
-                                    return(success_msg, success_code)        
-                                except:
-                                    user_count=0
-                                    error_notify = error_status("Reset Email could not be sent")
-                                    print(error_notify)                              
-                    else:
-                        user_count=0
-                        error_notify = error_status("Cardholder not valid")
-                        print(error_notify)
-                
+        else:
+            user_count=0
+            error_notify = error_status("Email and/pr password is Empty")
+            print(error_notify)
+                    
         if (user_count == 0):  
             msg = "RESET PASSWORD FAILED - You are Not Authorized"
             code = 400       
             return msg, code
 
-        print('----- END Request Password Reset Script ---------------------------')
+        print('----- END FORGOT PASSWORD Script ---------------------------')
 
 @app.route("/change-password/<id>", methods=['POST'])
 @cross_origin(origin='*')
@@ -534,67 +568,98 @@ def changePassword(id):
         WNComparePassword = request.json.get('verifyPassword')
         #print(WNComparePassword)
 
-        if (WNVerify == WNComparePassword):
-            # Check the specified Access Group
-            ag_list = get_accessgroups()
-            print(ag_list.json())
-            data_ag_list = ag_list.json()
-            print('                                              ')
-            print('----------------------------------------------')
-            for each in data_ag_list['results']:   
-                if (each['name'] == "RequestAccess"):
-                    AG_id = each['id']
-                    AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
-                    AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
-                    data_AG_cardholders = AG_cardholders.json()
-                    for cardholder in data_AG_cardholders['cardholders']:
-                        CH_href = cardholder['cardholder']['href']
-                        #print(CH_href)
-                        cardholder_details = get_cardholder_details(CH_href)
-                        data_cardholder_details = cardholder_details.json()
-                        extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
-                        data_CH_detail = json.loads(extract_data_cardholder_details)
+        if (WNemail and WNVerify and WNComparePassword):
+            if (WNVerify == WNComparePassword):
+                # Check the specified Access Group
+                ag_list = get_accessgroups()
+                print(ag_list.json())
+                data_ag_list = ag_list.json()
+                print('                                              ')
+                print('----------------------------------------------')
+                for each in data_ag_list['results']:   
+                    if (each['name'] == "RequestAccess"):
+                        AG_id = each['id']
+                        AG_cardholders_URL = "/access_groups/"+AG_id+"/cardholders"
+                        AG_cardholders = get_accessgroup_cardholders(AG_cardholders_URL)
+                        data_AG_cardholders = AG_cardholders.json()
+                        for cardholder in data_AG_cardholders['cardholders']:
+                            CH_href = cardholder['cardholder']['href']
+                            #print(CH_href)
+                            cardholder_details = get_cardholder_details(CH_href)
+                            data_cardholder_details = cardholder_details.json()
+                            extract_data_cardholder_details = json.dumps(data_cardholder_details, indent=4)
+                            data_CH_detail = json.loads(extract_data_cardholder_details)
 
-                        if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
-                            print('----------------------------------------------')
-                            print(data_CH_detail['@Email'])
-                            print(data_CH_detail['@Phone'])
-                            # Test if Token is Valid PDF exists
-                            if ('@ResetCode' in data_CH_detail):
-                                if (data_CH_detail['@ResetCode'] == id):
-                                    # Reset Token is valid
-                                    hash_text = create_password(WNVerify)
-                                    data_update = {'personalDataDefinitions': [{'@VerifyPassword': {'value': hash_text}, '@ResetCode': {'value': ""}, '@ResetExpiry': {'value': ""}}]}
-                                    hash_json_patch_password = convert_password(data_update)
-                                    # write the first hashed+salted password that user put in to that PDF
-                                    success_pass_write = update_cardholder_pdf(CH_href, hash_json_patch_password)
-                                    if success_pass_write.status_code == 204:
-                                        user_count+=1
-                                        msg = "PASSWORD RESET was SUCCESSFUL - Please LOGIN with the email and password you just entered, to receive your mobile credential."
-                                        code = 200       
-                                        return msg, code
-                                        print("SUCCESS: New Password written to VerifyPassword PDF") 
-                                    else:
+                            if ((data_CH_detail['@Email'] == WNemail) and (data_CH_detail['accessGroups'][0]['status']['type'] == 'active')): 
+                                print('----------------------------------------------')
+                                print(data_CH_detail['@Email'])
+                                print(data_CH_detail['@Phone'])
+                                from_reset = pendulum.now()
+                                # To enable datetime to be serialized
+                                fromReset = from_reset.isoformat()
+
+                                # Test if Token is Valid PDF exists
+                                if ('@ResetCode' in data_CH_detail):
+                                    if (data_CH_detail['@ResetCode'] == id):
+                                        if (data_CH_detail['@ResetExpiry'] > str(fromReset)):
+                                            # Reset Token is valid and not expired
+                                            hash_text = create_password(WNVerify)
+                                            data_update = {'personalDataDefinitions': [{'@VerifyPassword': {'value': hash_text}, '@ResetCode': {'value': ""}, '@ResetExpiry': {'value': ""}}]}
+                                            hash_json_patch_password = convert_password(data_update)
+                                            # write the first hashed+salted password that user put in to that PDF
+                                            success_pass_write = update_cardholder_pdf(CH_href, hash_json_patch_password)
+                                            if success_pass_write.status_code == 204:
+                                                user_count+=1
+                                                msg = "PASSWORD RESET was SUCCESSFUL - Please LOGIN with the email and password you just entered, to receive your mobile credential."
+                                                code = 200       
+                                                return msg, code
+                                                print("SUCCESS: New Password written to VerifyPassword PDF") 
+                                            else:
+                                                user_count=0
+                                                error_notify = error_status("Could not update User - No new Password saved")
+                                                print(error_notify)
+                                        # If Reset Expiry is expired - put in a new Expiry date and send a new Reset code
+                                        else:
+                                            untilResetDate = set_reset_expiry(from_reset)
+                                            # Create new ResetCode
+                                            reset_key = create_resetpsw_key()
+                                            # Write new Expiry and ResetCode into cardholder PDF
+                                            text_resetcode_assign = json.dumps({"@ResetCode": reset_key,"@ResetExpiry": untilResetDate})
+                                            json_resetcode_assign = json.loads(text_resetcode_assign)
+                                            patch_mc_date = update_cardholder_pdf(CH_href, json_resetcode_assign)
+                                            if patch_mc_date.status_code == 204:
+                                                user_count+=1
+                                                # TO DO: Send "Reset URL" to user
+                                                print('----------------------------------------------') 
+                                                print(" Your RESET CODE was expired - A NEW RESET Code has been set and sent to "+data_CH_detail['@Email'])
+                                                print('----------------------------------------------') 
+                                                
+                                                success_msg = "Your RESET CODE was expired - A NEW RESET Code has been set and sent - Check your email and follow the Password Reset Link we sent you."
+                                                #success_msg = data_CH_detail['@Email']
+                                                success_code = 200
+                                                return(success_msg, success_code) 
+                                    else:    
                                         user_count=0
-                                        error_notify = error_status("Could not update User - No new Password saved")
-                                        print(error_notify)
-                                else:    
-                                    user_count=0
-                                    error_notify = error_status("Reset Token is invalid")
-                                    print(error_notify)         
-                            else:   
-                                    user_count=0
-                                    error_notify = error_status("No Reset Token")
-                                    print(error_notify)  
-                        else:
-                            user_count=0
-                            error_notify = error_status("Cardholder not valid")
-                            print(error_notify)  
+                                        error_notify = error_status("Reset Token is invalid or expired")
+                                        print(error_notify)         
+                                else:   
+                                        user_count=0
+                                        error_notify = error_status("No Reset Token")
+                                        print(error_notify)  
+                            else:
+                                user_count=0
+                                error_notify = error_status("Cardholder not valid")
+                                print(error_notify)  
+            else:
+                user_count=0
+                error_notify = error_status("Passwords didn't match")
+                print(error_notify) 
+
         else:
             user_count=0
-            error_notify = error_status("Passwords didn't match")
-            print(error_notify) 
-                  
+            error_notify = error_status("Email and/pr password is Empty")
+            print(error_notify)
+                    
         if (user_count == 0):  
             msg = "RESET PASSWORD FAILED - Unauthorized Reset Request"
             code = 400       
