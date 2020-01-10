@@ -8,7 +8,7 @@ where users can login, register and reset their password, in order to receive a 
 
 ## Flask Back-end
 
-this processes the user front-end requests and checks the users access group and whether they are an authorized user
+flask_app.py - this processes the user front-end requests and checks the users access group and whether they are an authorized user
 
 ## Gallagher Access Control system
 
