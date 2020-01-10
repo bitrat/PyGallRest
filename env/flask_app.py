@@ -33,7 +33,6 @@ mail_psw = os.getenv("MAIL_PASSWORD")
 
 # Request headers
 headers = {
-    #'Authorization':'GGL-API-KEY B9EF-1703-6336-DE5C-7FEC-F15B-6803-8B2F',
     'Authorization': auth_key,
     'Content-Type':'application/json'
 }
@@ -57,12 +56,6 @@ app.config['MAIL_DEFAULT_SENDER'] = mail_sender
 app.config['MAIL_PASSWORD'] = mail_psw
 
 mail = Mail(app)
-# enable CORS
-# TO DO: restrict Origin
-# CORS(app, resources={r"/*": {"origins": "http://localhost:8090"}})
-# CORS(app, resources={r"/*": {"origins": "*"}})
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
 
 #------------ START of API functions to Gallagher -----------------
 # Set base path for each request
@@ -129,7 +122,7 @@ def send_reset_msg(key,mail_rcp):
 
 def set_reset_expiry(from_date):
     # NZDST +13 hours (if before 1 pm, then with add 24 hours, ResetDate is programmed as today 00:00, not time and date
-    until_reset = from_date.add(hours=26)
+    until_reset = from_date.add(hours=48)
     print(until_reset)
     # To enable datetime to be serialized
     untilReset = until_reset.isoformat()
@@ -178,8 +171,17 @@ def verify_password(input_to_hash,hashedpass):
 # ----------- End - PASSWORD Functions -----------------------
 
 # ----------- Start - FLASK ROUTES ----------------------------
+# CORS Implementation
+# - enable CORS
+# - restrict Origin
+CORS(app, resources={r"/*": {"origins": "http://localhost:8090"}})
+# TESTING ONLY: cors = CORS(app) # This makes the CORS feature cover all routes in the app
+# EXAMPLE: @app.route('/routeToUse', methods=['POST'])
+# EXAMPLE: @cross_origin(origin='localhost',headers=headers)
+
 @app.route('/postLogin', methods=['GET','POST'])
-@cross_origin(origin='*')
+# TESTING ONLY: @cross_origin(origin='*')
+@cross_origin(origin='localhost',headers=headers)
 def post_LoginData():
     if request.method == "GET":
         return jsonify('This is a POST route only')
@@ -301,7 +303,8 @@ def post_LoginData():
         print('----- END LOGIN Script ---------------------------')
  
 @app.route('/postRegister', methods=['GET','POST'])
-@cross_origin(origin='*')
+#@cross_origin(origin='*')
+@cross_origin(origin='localhost',headers=headers)
 def post_RegisterData():
     if request.method == "GET":
         return jsonify('This is a POST route only')
@@ -400,7 +403,8 @@ def post_RegisterData():
         print('----- END Register Script ---------------------------')
 
 @app.route('/rqForgotPassword', methods=['POST'])
-@cross_origin(origin='*')
+#@cross_origin(origin='*')
+@cross_origin(origin='localhost',headers=headers)
 def post_rqForgotPassword(): 
     if request.method == "POST":  
         # Get user's email address and check if a reset password is allowed
@@ -550,7 +554,8 @@ def post_rqForgotPassword():
         print('----- END FORGOT PASSWORD Script ---------------------------')
 
 @app.route("/change-password/<id>", methods=['POST'])
-@cross_origin(origin='*')
+#@cross_origin(origin='*')
+@cross_origin(origin='localhost',headers=headers)
 def changePassword(id):     
     if request.method == "POST":
         #return jsonify('Change Password POST route is: '+id)
@@ -631,10 +636,10 @@ def changePassword(id):
                                                 user_count+=1
                                                 # TO DO: Send "Reset URL" to user
                                                 print('----------------------------------------------') 
-                                                print(" Your RESET CODE was expired - A NEW RESET Code has been set and sent to "+data_CH_detail['@Email'])
+                                                print(" PASSWORD NOT CHANGED - Your RESET CODE was expired - A NEW RESET Code has been set and sent to "+data_CH_detail['@Email'])
                                                 print('----------------------------------------------') 
                                                 
-                                                success_msg = "Your RESET CODE was expired - A NEW RESET Code has been set and sent - Check your email and follow the Password Reset Link we sent you."
+                                                success_msg = "PASSWORD NOT CHANGED - Your RESET CODE was expired - A NEW RESET Code has been set and sent - Check your email and follow the Password Reset Link we sent you."
                                                 #success_msg = data_CH_detail['@Email']
                                                 success_code = 200
                                                 return(success_msg, success_code) 
