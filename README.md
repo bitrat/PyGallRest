@@ -48,7 +48,7 @@ The vue app currently will run on localhost:8090
   
 * Navigate into PyGallRest\env Project folder - install requirements
   
-* .\\env\Scripts\activate
+* .\\Scripts\activate
 
 * python flask_app.py
 
