@@ -4,11 +4,11 @@ This application (set to run on localhost) consists of:
 
 ## Vue.js Front-end
 
-simple-auth folder - where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
+simple-auth\ - where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
 
 ## Flask Back-end
 
-flask_app.py - this processes the user front-end requests and checks the users access group and whether they are an authorized user
+env\flask_app.py - this processes the user front-end requests and checks the users access group and whether they are an authorized user
 
 ## Gallagher Access Control system
 
