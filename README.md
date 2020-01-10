@@ -1,10 +1,10 @@
 # Gallagher Mobile Credential – Self Service application
 
-This application consists of:
+This application (set to run on localhost) consists of:
 
 ## Vue.js Front-end
 
-where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
+simple-auth folder - where users can login, register and reset their password, in order to receive a mobile credential for a specified time (10 minutes – this time is adjustable)
 
 ## Flask Back-end
 
@@ -35,7 +35,7 @@ The vue app currently will run on localhost:8090
 
 ## Install and setup Flask
   
-* Navigate into PyGallRest\env Project folder
+* Navigate into PyGallRest\env Project folder - install requirements
   
 * .\\env\Scripts\activate
 
