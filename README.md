@@ -21,17 +21,17 @@ REST API – cardholder licensable feature – updates authorized cardholder Per
 * create a REST client (= API key), enable REST port 8094, create cert thumbprint, set client cert (pin it)
 
 * create Access Group(s)
-** RequestAccess
-** NoAccess
+  - RequestAccess
+  - NoAccess
 * create PDFs
-** Email
-** Phone
-** VerifyPassword
-** ResetCode
-** ResetExpiry
+  - Email
+  - Phone
+  - VerifyPassword
+  - ResetCode
+  - ResetExpiry
 * create Users
-** create at least 2 users in RequestAccess access group
-** create at least 2 users in NoAccess access group
+  - create at least 2 users in RequestAccess access group
+  - create at least 2 users in NoAccess access group
 
 ## Install and setup Vue.js
 Create simple-auth Project – axios to send front-end requests to Flask app
