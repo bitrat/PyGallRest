@@ -21,7 +21,6 @@ import uuid
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 api_url_base = os.getenv("GALLAGHER_API")
-api_token = os.getenv("API_KEY")
 cert_filename = os.getenv("CERT_FILENAME")
 cert_password = os.getenv("CERT_PSW")
 cert_server = os.getenv("CERT_SERVER")

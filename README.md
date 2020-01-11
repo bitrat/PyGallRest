@@ -18,7 +18,7 @@ REST API – cardholder licensable feature – updates authorized cardholder Per
 
 ## Install and setup Gallagher
   
-* create a REST client (= API key), enable REST port 8094, create cert thumbprint, set client cert (pin it)
+* create a REST client (= API key), enable REST port 8094, create cert thumbprint (*.pfx file), set client cert (pin it in Gallagher Server properties)
 
 * create Access Group(s)
   - RequestAccess
@@ -47,6 +47,15 @@ The vue app currently will run on localhost:8090
 ## Install and setup Flask
   
 * Navigate into PyGallRest\env Project folder - install requirements
+
+* You will need to create and then populate your .env file (this is a text file with your secrets or other information you want to reference as a variable rather than repeat code - i.e. Gallagher API parent address, Gallagher API key, Email password etc) - the python-dotenv library is used to reference this file during app functioning.
+  - GALLAGHER_API="https://127.0.0.1:8904/api"
+  - CERT_FILENAME="XXX.pfx"
+  - CERT_PSW="XXX"
+  - HEADER_AUTH="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"   (this contains the Gallagher API Key)
+  - MAIL_DEFAULT_SENDER="xxx@xxx.com"
+  - MAIL_USERNAME="xxx@xxx.com"
+  - MAIL_PASSWORD="XXX"
   
 * .\\Scripts\activate
 
