@@ -5,6 +5,8 @@ This code was written for Gallagher version 8.0 (Jan 2021) and the Cardholder RE
 
 If you don't know what a REST-API is, or does, this intro to it explains it: https://towardsdatascience.com/introduction-to-rest-apis-90b5d9676004
 
+The application consists of a Vue front-end which allows people to login (register, forget password) and if their login username and hashed and salted password matches what is in the Gallagher system, then they get a 1 day activated mobile credential sent to their phone, which they can use to access doors (swipe at card readers).
+
 This application (set to run on localhost) consists of:
 
 ## Vue.js Front-end
