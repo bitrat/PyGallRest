@@ -1,7 +1,9 @@
 # Gallagher Mobile Credential – Self Service application
 Gallagher is an access control system (card swipe system) which has REST-API modules that can be purchased as add-ons and added to the Gallagher license.
+
 This code was written for Gallagher version 8.0 (Jan 2021) and the Cardholder REST-API component.
-If you don;t know what a REST-API is, or does, this intro to it explains it: https://towardsdatascience.com/introduction-to-rest-apis-90b5d9676004
+
+If you don't know what a REST-API is, or does, this intro to it explains it: https://towardsdatascience.com/introduction-to-rest-apis-90b5d9676004
 
 This application (set to run on localhost) consists of:
 
